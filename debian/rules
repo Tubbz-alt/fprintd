@@ -1,0 +1,36 @@
+#!/usr/bin/make -f
+
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+%:
+	dh $@
+
+# Configuration arguments
+CONFIG_ARGS = --enable-pam --disable-silent-rules --with-systemdsystemunitdir=/lib/systemd/system --libexecdir=/usr/lib/fprintd/
+
+ifneq (,$(filter fprintd-doc,$(shell dh_listpackages)))
+	CONFIG_ARGS += --enable-gtk-doc
+endif
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CONFIG_ARGS)
+
+override_dh_auto_build:
+	make -C doc/dbus all
+	dh_auto_build
+
+override_dh_install-indep:
+	dh_install -i -X .la -X .a --fail-missing
+
+override_dh_install-arch:
+	dh_install -a -X .la -X .a --fail-missing
+	mkdir -p debian/libpam-fprintd/lib
+	mv debian/libpam-fprintd/usr/lib/* debian/libpam-fprintd/lib/
+	find debian/libpam-fprintd/usr -type d -empty -delete
+	# Arch-qualify pam-configs
+	rename 's|(.*)/(.*)$$|$$1/$$2.$(DEB_HOST_ARCH)|' debian/libpam-fprintd/usr/share/pam-configs/*
+	sed -e 's/#DEB_HOST_ARCH#/$(DEB_HOST_ARCH)/g' debian/libpam-fprintd.prerm > debian/libpam-fprintd.prerm.$(DEB_HOST_ARCH)
+
+override_dh_clean:
+	rm -f debian/libpam-fprintd.prerm.*
+	dh_clean

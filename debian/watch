@@ -1,0 +1,4 @@
+version=4
+
+https://gitlab.freedesktop.org/libfprint/fprintd/tags \
+ /libfprint/fprintd/uploads/(?:.*)/@PACKAGE@@ANY_VERSION@@ARCHIVE_EXT@

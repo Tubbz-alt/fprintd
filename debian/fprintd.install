@@ -1,0 +1,14 @@
+etc/dbus-1/system.d/net.reactivated.Fprint.conf
+etc/fprintd.conf
+usr/share/dbus-1/system-services/net.reactivated.Fprint.service
+usr/share/dbus-1/interfaces/net.reactivated.Fprint.Manager.xml
+usr/share/dbus-1/interfaces/net.reactivated.Fprint.Device.xml
+usr/share/man/man1/fprintd.1
+usr/share/locale/*/LC_MESSAGES/fprintd.mo
+usr/share/polkit-1/actions/net.reactivated.fprint.device.policy
+usr/lib/fprintd/fprintd
+usr/bin/fprintd-list
+usr/bin/fprintd-verify
+usr/bin/fprintd-enroll
+usr/bin/fprintd-delete
+lib/systemd/system/fprintd.service

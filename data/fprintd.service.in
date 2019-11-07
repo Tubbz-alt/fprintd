@@ -1,0 +1,32 @@
+[Unit]
+Description=Fingerprint Authentication Daemon
+Documentation=man:fprintd(1)
+
+[Service]
+Type=dbus
+BusName=net.reactivated.Fprint
+ExecStart=@libexecdir@/fprintd
+
+# Filesystem lockdown
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=@localstatedir@/lib/fprint
+ProtectHome=true
+PrivateTmp=true
+
+# Network
+PrivateNetwork=true
+RestrictAddressFamilies=AF_UNIX AF_LOCAL AF_NETLINK
+
+# Execute Mappings
+MemoryDenyWriteExecute=true
+
+# Modules
+ProtectKernelModules=true
+
+# Real-time
+RestrictRealtime=true
+
+# Privilege escalation
+NoNewPrivileges=true

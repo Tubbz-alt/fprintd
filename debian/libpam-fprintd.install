@@ -1,0 +1,2 @@
+usr/lib/*/security/pam_fprintd.so
+debian/pam-configs/* usr/share/pam-configs/
