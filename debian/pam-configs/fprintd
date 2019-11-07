@@ -1,5 +1,5 @@
 Name: Fingerprint authentication
-Default: no
+Default: yes
 Priority: 260
 Conflicts: fprint
 Auth-Type: Primary
