@@ -1,0 +1,178 @@
+From: cheng_cm <chengbo_cm@deepin.com>
+Date: Fri, 17 Jan 2020 10:20:00 +0800
+Subject: device.c add a new func for delete enrolled fingerprints
+
+Add a new method for delete one finger's enrolled fingerprint for user.
+Based on user_name and finger_name delete the specified finger's enrolled prints
+
+---
+
+diff info
+Index: fprintd/NEWS
+===================================================================
+--- fprintd.orig/NEWS
++++ fprintd/NEWS
+@@ -1,6 +1,9 @@
+ This file lists notable changes in each release. For the full history of all
+ changes, see ChangeLog.
+ 
++version 0.8.1-1:
++- Add new method for delete enroll fingerprint for user
++
+ version 0.8.1:
+ - Fix build when builddir != srcdir
+ - Fix possible crash on exit
+Index: fprintd/src/device.c
+===================================================================
+--- fprintd.orig/src/device.c
++++ fprintd/src/device.c
+@@ -68,6 +68,10 @@ static void fprint_device_list_enrolled_
+ static void fprint_device_delete_enrolled_fingers(FprintDevice *rdev,
+ 						  const char *username,
+ 						  DBusGMethodInvocation *context);
++static void fprint_device_delete_enrolled_finger(FprintDevice *rdev,
++						  const char *username,
++						  const char *finger_name,
++						  DBusGMethodInvocation *context);
+ 
+ #include "device-dbus-glue.h"
+ 
+@@ -1234,5 +1238,64 @@ static void fprint_device_delete_enrolle
+ 	g_free (user);
+ 
+ 	dbus_g_method_return(context);
++}
++
++static void fprint_device_delete_enrolled_finger(FprintDevice *rdev,
++						  const char *username,
++						  const char *finger_name,
++						  DBusGMethodInvocation *context)
++{
++	FprintDevicePrivate *priv = DEVICE_GET_PRIVATE(rdev);
++	GError *error = NULL;
++	//struct fp_print_data *data = NULL;
++	char *user, *sender;
++	guint finger_num = finger_name_to_num (finger_name);
++	//int r;
++
++	if (finger_num == -1) {
++		g_set_error(&error, FPRINT_ERROR, FPRINT_ERROR_INVALID_FINGERNAME,
++			    "Invalid print name");
++		dbus_g_method_return_error(context, error);
++		g_error_free (error);
++		return;
++	}
++
++	user = _fprint_device_check_for_username (rdev,
++						  context,
++						  username,
++						  NULL,
++						  &error);
++	if (user == NULL) {
++		dbus_g_method_return_error (context, error);
++		g_error_free (error);
++		return;
++	}
++   /*
++	r = store.print_data_load(priv->dev, (enum fp_finger)finger_num, 
++					  &data, username);
++
++	if (r < 0 || !data) {
++		g_set_error(&error, FPRINT_ERROR, FPRINT_ERROR_INTERNAL,
++				"No such print %d", finger_num);
++		dbus_g_method_return_error(context, error);
++		g_error_free(error);
++		return;
++	}
++   */
++	if (_fprint_device_check_polkit_for_action (rdev, context, "net.reactivated.fprint.device.enroll", &error) == FALSE) {
++		g_free (user);
++		dbus_g_method_return_error (context, error);
++		g_error_free (error);
++		return;
++	}
++
++	sender = dbus_g_method_get_sender (context);
++	_fprint_device_add_client (rdev, sender);
++	g_free (sender);
++
++	store.print_data_delete(priv->ddev, (enum fp_finger)finger_num, user);
++	g_free (user);
++
++	dbus_g_method_return(context);
+ }
+ 
+Index: fprintd/src/device.xml
+===================================================================
+--- fprintd.orig/src/device.xml
++++ fprintd/src/device.xml
+@@ -498,6 +498,32 @@
+ 
+ 		<!-- ************************************************************ -->
+ 
++		<method name="DeleteEnrolledFinger">
++			<arg type="s" name="username" direction="in">
++				<doc:doc><doc:summary>The username for whom to delete the enrolled fingerprints. See <doc:ref type="description" to="usernames">Usernames</doc:ref>.</doc:summary></doc:doc>
++			</arg>
++			<arg type="s" name="finger_name" direction="in">
++				<doc:doc><doc:summary>A string representing the finger to delete. See <doc:ref type="description" to="fingerprint-names">Fingerprint names</doc:ref>.</doc:summary></doc:doc>
++			</arg>
++			<annotation name="org.freedesktop.DBus.GLib.Async" value="" />
++
++			<doc:doc>
++				<doc:description>
++					<doc:para>
++						Delete one of the enrolled fingerprints for the chosen user.
++					</doc:para>
++				</doc:description>
++
++				<doc:errors>
++					<doc:error name="&ERROR_PERMISSION_DENIED;">if the caller lacks the appropriate PolicyKit authorization</doc:error>
++					<doc:error name="&ERROR_NO_ENROLLED_PRINTS;">if there are no enrolled prints for the chosen user</doc:error>
++					<doc:error name="&ERROR_INTERNAL;">if there was an internal error</doc:error>
++				</doc:errors>
++			</doc:doc>
++		</method>
++
++		<!-- ************************************************************ -->
++
+ 		<signal name="EnrollStatus">
+ 			<arg type="s" name="result">
+ 				<doc:doc>
+Index: fprintd/src/net.reactivated.Fprint.Device.xml
+===================================================================
+--- fprintd.orig/src/net.reactivated.Fprint.Device.xml
++++ fprintd/src/net.reactivated.Fprint.Device.xml
+@@ -498,6 +498,32 @@
+ 
+ 		<!-- ************************************************************ -->
+ 
++		<method name="DeleteEnrolledFinger">
++			<arg type="s" name="username" direction="in">
++				<doc:doc><doc:summary>The username for whom to delete the enrolled fingerprints. See <doc:ref type="description" to="usernames">Usernames</doc:ref>.</doc:summary></doc:doc>
++			</arg>
++			<arg type="s" name="finger_name" direction="in">
++				<doc:doc><doc:summary>A string representing the finger to delete. See <doc:ref type="description" to="fingerprint-names">Fingerprint names</doc:ref>.</doc:summary></doc:doc>
++			</arg>
++			<annotation name="org.freedesktop.DBus.GLib.Async" value="" />
++
++			<doc:doc>
++				<doc:description>
++					<doc:para>
++						Delete one of the enrolled fingerprints for the chosen user.
++					</doc:para>
++				</doc:description>
++
++				<doc:errors>
++					<doc:error name="&ERROR_PERMISSION_DENIED;">if the caller lacks the appropriate PolicyKit authorization</doc:error>
++					<doc:error name="&ERROR_NO_ENROLLED_PRINTS;">if there are no enrolled prints for the chosen user</doc:error>
++					<doc:error name="&ERROR_INTERNAL;">if there was an internal error</doc:error>
++				</doc:errors>
++			</doc:doc>
++		</method>
++
++		<!-- ************************************************************ -->
++
+ 		<signal name="EnrollStatus">
+ 			<arg type="s" name="result">
+ 				<doc:doc>
